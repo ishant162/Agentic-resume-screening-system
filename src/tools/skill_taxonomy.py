@@ -4,25 +4,26 @@ Skill Taxonomy Engine
 Provides semantic understanding of skill relationships and equivalencies.
 """
 
-from typing import List, Dict, Tuple
+
 from fuzzywuzzy import fuzz
-from src.llm.groq_llm import GroqLLM
 from langchain_core.messages import HumanMessage, SystemMessage
+
+from src.llm.groq_llm import GroqLLM
 
 
 class SkillTaxonomy:
     """
     Intelligent skill taxonomy with semantic understanding
-    
+
     Understands:
     - Skill equivalencies (TensorFlow ≈ PyTorch)
     - Skill hierarchies (Python > Django > REST APIs)
     - Skill adjacencies (React → Vue, AWS → Azure)
     """
-    
+
     def __init__(self):
         self.llm = GroqLLM().get_llm_model()
-        
+
         # Pre-defined skill relationships (fast lookup)
         self.equivalencies = {
             "tensorflow": ["pytorch", "keras"],
@@ -38,14 +39,14 @@ class SkillTaxonomy:
             "docker": ["kubernetes", "containerization"],
             "kubernetes": ["docker", "k8s"],
         }
-        
+
         self.hierarchies = {
             "python": ["django", "flask", "fastapi", "pandas", "numpy"],
             "javascript": ["react", "vue", "angular", "node.js", "express"],
             "machine learning": ["deep learning", "nlp", "computer vision", "tensorflow", "pytorch"],
             "deep learning": ["cnn", "rnn", "lstm", "transformer"],
         }
-        
+
         self.categories = {
             "ml_frameworks": ["tensorflow", "pytorch", "keras", "scikit-learn", "xgboost"],
             "web_frameworks": ["react", "angular", "vue", "django", "flask", "spring"],
@@ -53,53 +54,53 @@ class SkillTaxonomy:
             "databases": ["mysql", "postgresql", "mongodb", "redis", "cassandra"],
             "programming_languages": ["python", "java", "javascript", "typescript", "go", "rust"],
         }
-    
+
     def are_skills_equivalent(
         self,
         skill1: str,
         skill2: str,
         threshold: float = 0.7
-    ) -> Tuple[bool, float, str]:
+    ) -> tuple[bool, float, str]:
         """
         Check if two skills are equivalent or highly related
-        
+
         Returns:
             (is_equivalent, similarity_score, reasoning)
         """
         skill1_lower = skill1.lower().strip()
         skill2_lower = skill2.lower().strip()
-        
+
         # Exact match
         if skill1_lower == skill2_lower:
             return True, 1.0, "Exact match"
-        
+
         # Check pre-defined equivalencies
         if skill1_lower in self.equivalencies:
             if skill2_lower in self.equivalencies[skill1_lower]:
                 return True, 0.9, f"{skill1} and {skill2} are considered equivalent frameworks"
-        
+
         # Fuzzy string matching
         fuzzy_score = fuzz.ratio(skill1_lower, skill2_lower) / 100.0
         if fuzzy_score >= 0.85:
             return True, fuzzy_score, f"Very similar naming: {skill1} ≈ {skill2}"
-        
+
         # Check if they're in same category
         for category, skills in self.categories.items():
             if skill1_lower in skills and skill2_lower in skills:
                 return True, 0.7, f"Both are {category.replace('_', ' ')}"
-        
+
         # Use LLM for semantic similarity (slower but more accurate)
         if threshold > 0.6:  # Only use LLM for closer matches
             semantic_result = self._llm_skill_similarity(skill1, skill2)
             if semantic_result["score"] >= threshold:
                 return True, semantic_result["score"], semantic_result["reasoning"]
-        
+
         return False, 0.0, "Not equivalent"
-    
-    def find_related_skills(self, skill: str, max_results: int = 5) -> List[Dict]:
+
+    def find_related_skills(self, skill: str, max_results: int = 5) -> list[dict]:
         """
         Find skills related to the given skill
-        
+
         Returns:
             [
                 {"skill": "PyTorch", "relationship": "equivalent", "score": 0.9},
@@ -108,7 +109,7 @@ class SkillTaxonomy:
         """
         skill_lower = skill.lower().strip()
         related = []
-        
+
         # Check equivalencies
         if skill_lower in self.equivalencies:
             for equiv in self.equivalencies[skill_lower]:
@@ -117,7 +118,7 @@ class SkillTaxonomy:
                     "relationship": "equivalent",
                     "score": 0.9
                 })
-        
+
         # Check hierarchies (parent/child)
         for parent, children in self.hierarchies.items():
             if skill_lower == parent:
@@ -133,7 +134,7 @@ class SkillTaxonomy:
                     "relationship": "parent_skill",
                     "score": 0.7
                 })
-        
+
         # Find same-category skills
         for category, skills in self.categories.items():
             if skill_lower in skills:
@@ -144,17 +145,17 @@ class SkillTaxonomy:
                             "relationship": "same_category",
                             "score": 0.6
                         })
-        
+
         return related[:max_results]
-    
+
     def enhance_skill_matching(
         self,
         required_skill: str,
-        candidate_skills: List[str]
-    ) -> Dict:
+        candidate_skills: list[str]
+    ) -> dict:
         """
         Enhanced matching that considers equivalencies and relationships
-        
+
         Returns:
             {
                 "exact_match": bool,
@@ -165,18 +166,18 @@ class SkillTaxonomy:
             }
         """
         exact_match = required_skill.lower() in [s.lower() for s in candidate_skills]
-        
+
         equivalent_matches = []
         related_matches = []
-        
+
         for cand_skill in candidate_skills:
             is_equiv, score, reasoning = self.are_skills_equivalent(required_skill, cand_skill)
-            
+
             if is_equiv and score >= 0.85:
                 equivalent_matches.append(cand_skill)
             elif is_equiv and score >= 0.6:
                 related_matches.append(cand_skill)
-        
+
         # Calculate overall match score
         if exact_match:
             match_score = 1.0
@@ -190,7 +191,7 @@ class SkillTaxonomy:
         else:
             match_score = 0.0
             reasoning = f"No match found for {required_skill}"
-        
+
         return {
             "exact_match": exact_match,
             "equivalent_matches": equivalent_matches,
@@ -198,10 +199,10 @@ class SkillTaxonomy:
             "match_score": match_score,
             "reasoning": reasoning
         }
-    
-    def _llm_skill_similarity(self, skill1: str, skill2: str) -> Dict:
+
+    def _llm_skill_similarity(self, skill1: str, skill2: str) -> dict:
         """Use LLM to assess semantic similarity between skills"""
-        
+
         prompt = f"""
             Are these two technical skills equivalent or highly related?
 
@@ -219,23 +220,23 @@ class SkillTaxonomy:
                 "reasoning": "<1-2 sentence explanation>"
             }}
         """
-        
+
         try:
             messages = [
                 SystemMessage(content="You are an expert at understanding technical skill relationships."),
                 HumanMessage(content=prompt)
             ]
-            
+
             response = self.llm.invoke(messages)
-            
+
             import json
             response_text = response.content.strip()
             if "```json" in response_text:
                 response_text = response_text.split("```json")[1].split("```")[0]
-            
+
             result = json.loads(response_text.strip())
             return result
-            
+
         except Exception as e:
             print(f"    ⚠️  LLM similarity check failed: {e}")
             return {"score": 0.0, "reasoning": "Unable to assess"}
@@ -244,24 +245,24 @@ class SkillTaxonomy:
 # Test
 if __name__ == "__main__":
     taxonomy = SkillTaxonomy()
-    
+
     # Test equivalency
     print("\n✅ Skill Equivalency Tests:")
-    
+
     tests = [
         ("TensorFlow", "PyTorch"),
         ("React", "Vue"),
         ("AWS", "Azure"),
         ("Python", "Java"),  # Should be low
     ]
-    
+
     for skill1, skill2 in tests:
         is_equiv, score, reasoning = taxonomy.are_skills_equivalent(skill1, skill2)
         print(f"\n{skill1} vs {skill2}:")
         print(f"  Equivalent: {is_equiv}")
         print(f"  Score: {score:.2f}")
         print(f"  Reasoning: {reasoning}")
-    
+
     # Test related skills
     print("\n\n✅ Related Skills:")
     related = taxonomy.find_related_skills("TensorFlow")

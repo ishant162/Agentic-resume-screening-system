@@ -1,60 +1,64 @@
+
 from langchain_core.messages import HumanMessage, SystemMessage
+
+from config.prompts import (
+    CANDIDATE_RANKING_EXPLANATION_PROMPT,
+    FINAL_CANDIDATE_ASSESSMENT_PROMPT,
+)
 from config.settings import settings
-from config.prompts import FINAL_CANDIDATE_ASSESSMENT_PROMPT, CANDIDATE_RANKING_EXPLANATION_PROMPT
+from src.llm.groq_llm import GroqLLM
 from src.models import (
     Candidate,
-    JobRequirements,
-    SkillScore,
-    ExperienceScore,
-    EducationScore,
     CandidateScore,
-    RankedCandidate
+    EducationScore,
+    ExperienceScore,
+    JobRequirements,
+    RankedCandidate,
+    SkillScore,
 )
-from src.llm.groq_llm import GroqLLM
-from typing import List, Dict
 
 
 class CandidateScorer:
     """Scores and ranks candidates using weighted scoring + LLM analysis"""
-    
+
     def __init__(self):
         self.llm = GroqLLM().get_llm_model()
-        
+
         # Get weights from settings
         self.skill_weight = settings.SKILL_WEIGHT
         self.experience_weight = settings.EXPERIENCE_WEIGHT
         self.education_weight = settings.EDUCATION_WEIGHT
-    
+
     def score_and_rank_candidates(
         self,
-        candidates: List[Dict],
-        job_requirements: Dict,
-        skill_scores: List[Dict],
-        experience_scores: List[Dict],
-        education_scores: List[Dict]
-    ) -> List[RankedCandidate]:
+        candidates: list[dict],
+        job_requirements: dict,
+        skill_scores: list[dict],
+        experience_scores: list[dict],
+        education_scores: list[dict]
+    ) -> list[RankedCandidate]:
         """
         Score all candidates and rank them
-        
+
         Args:
             candidates: List of candidate dicts
             job_requirements: Job requirements dict
             skill_scores: List of skill score dicts
             experience_scores: List of experience score dicts
             education_scores: List of education score dicts
-            
+
         Returns:
             List of RankedCandidate objects (sorted by score)
         """
         print("🏆 Scoring and ranking candidates...")
-        
+
         # Convert dicts to models
         job_req = JobRequirements(**job_requirements)
         candidate_models = [Candidate(**c) for c in candidates]
         skill_score_models = [SkillScore(**s) for s in skill_scores]
         exp_score_models = [ExperienceScore(**e) for e in experience_scores]
         edu_score_models = [EducationScore(**e) for e in education_scores]
-        
+
         # Score each candidate
         candidate_scores = []
         for i, candidate in enumerate(candidate_models):
@@ -66,10 +70,10 @@ class CandidateScorer:
                 edu_score_models[i]
             )
             candidate_scores.append(score)
-        
+
         # Sort by total score (highest first)
         candidate_scores.sort(key=lambda x: x.total_score, reverse=True)
-        
+
         # Create ranked candidates with comparative analysis
         ranked_candidates = []
         for rank, score in enumerate(candidate_scores, 1):
@@ -79,19 +83,19 @@ class CandidateScorer:
                 len(candidate_scores),
                 candidate_scores
             )
-            
+
             ranked = RankedCandidate(
                 rank=rank,
                 candidate_score=score,
                 comparison_notes=comparison
             )
             ranked_candidates.append(ranked)
-            
+
             print(f"  #{rank} {score.candidate_name}: {score.total_score:.1f}% "
                   f"({score.recommendation})")
-        
+
         return ranked_candidates
-    
+
     def _score_candidate(
         self,
         candidate: Candidate,
@@ -102,21 +106,21 @@ class CandidateScorer:
     ) -> CandidateScore:
         """
         Calculate comprehensive score for a candidate
-        
+
         Weighted scoring:
         - Skills: 50% (configurable)
         - Experience: 30% (configurable)
         - Education: 20% (configurable)
         """
-        
+
         # Calculate weighted scores
         weighted_skill = skill_score.overall_skill_score * self.skill_weight
         weighted_exp = experience_score.experience_match_score * self.experience_weight
         weighted_edu = education_score.education_score * self.education_weight
-        
+
         # Total score
         total_score = weighted_skill + weighted_exp + weighted_edu
-        
+
         # Determine recommendation level
         recommendation, confidence = self._determine_recommendation(
             total_score,
@@ -124,7 +128,7 @@ class CandidateScorer:
             experience_score,
             education_score
         )
-        
+
         # Identify strengths and concerns using LLM
         analysis = self._analyze_candidate_holistically(
             candidate,
@@ -134,7 +138,7 @@ class CandidateScorer:
             education_score,
             total_score
         )
-        
+
         return CandidateScore(
             candidate_name=candidate.name,
             candidate_email=candidate.email,
@@ -152,7 +156,7 @@ class CandidateScorer:
             red_flags=analysis["red_flags"],
             detailed_analysis=analysis["detailed_analysis"]
         )
-    
+
     def _determine_recommendation(
         self,
         total_score: float,
@@ -162,11 +166,11 @@ class CandidateScorer:
     ) -> tuple:
         """
         Determine recommendation level and confidence
-        
+
         Returns:
             (recommendation, confidence_level)
         """
-        
+
         # Base recommendation on total score
         if total_score >= 85:
             recommendation = "Strong Match"
@@ -180,7 +184,7 @@ class CandidateScorer:
         else:
             recommendation = "Not Recommended"
             confidence = "High" if total_score < 40 else "Medium"
-        
+
         # Check for critical disqualifiers
         if skill_score.has_critical_gaps:
             # Missing must-have skills - downgrade
@@ -190,14 +194,14 @@ class CandidateScorer:
             elif recommendation == "Good Match":
                 recommendation = "Potential Match"
                 confidence = "Low"
-        
+
         if not experience_score.meets_minimum_requirement:
             # Below minimum experience
             if recommendation in ["Strong Match", "Good Match"]:
                 confidence = "Medium"
-        
+
         return recommendation, confidence
-    
+
     def _analyze_candidate_holistically(
         self,
         candidate: Candidate,
@@ -206,10 +210,10 @@ class CandidateScorer:
         experience_score: ExperienceScore,
         education_score: EducationScore,
         total_score: float
-    ) -> Dict:
+    ) -> dict:
         """
         Use LLM to perform holistic candidate analysis
-        
+
         Returns:
             {
                 "strengths": [...],
@@ -245,15 +249,15 @@ class CandidateScorer:
             experience_analysis=experience_score.experience_analysis,
             education_analysis=education_score.education_analysis,
         )
-        
+
         try:
             messages = [
                 SystemMessage(content="You are an expert recruiter providing clear, actionable candidate assessments."),
                 HumanMessage(content=prompt)
             ]
-            
+
             response = self.llm.invoke(messages)
-            
+
             # Parse JSON
             import json
             response_text = response.content.strip()
@@ -261,10 +265,10 @@ class CandidateScorer:
                 response_text = response_text.split("```json")[1].split("```")[0]
             elif "```" in response_text:
                 response_text = response_text.split("```")[1].split("```")[0]
-            
+
             analysis = json.loads(response_text.strip())
             return analysis
-            
+
         except Exception as e:
             print(f"    ⚠️  LLM holistic analysis failed: {e}")
             # Fallback
@@ -274,37 +278,37 @@ class CandidateScorer:
                 "red_flags": [],
                 "detailed_analysis": f"{candidate.name} scored {total_score:.1f}% overall."
             }
-    
+
     def _generate_comparative_analysis(
         self,
         candidate_score: CandidateScore,
         rank: int,
         total_candidates: int,
-        all_scores: List[CandidateScore]
+        all_scores: list[CandidateScore]
     ) -> str:
         """
         Generate comparative analysis using LLM
-        
+
         Explains why this candidate ranks where they do relative to others
         """
-        
+
         # Only do comparative analysis for top 5
         if rank > 5 or total_candidates < 2:
             return ""
-        
+
         # Get context of nearby candidates
         context_candidates = []
-        
+
         # Add candidate above (if exists)
         if rank > 1:
             above = all_scores[rank - 2]
             context_candidates.append(f"Ranked #{rank-1}: {above.candidate_name} ({above.total_score:.1f}%)")
-        
+
         # Add candidate below (if exists)
         if rank < total_candidates:
             below = all_scores[rank]
             context_candidates.append(f"Ranked #{rank+1}: {below.candidate_name} ({below.total_score:.1f}%)")
-        
+
         context_str = "\n".join(context_candidates) if context_candidates else "No nearby candidates"
 
         prompt = CANDIDATE_RANKING_EXPLANATION_PROMPT.format(
@@ -324,23 +328,23 @@ class CandidateScorer:
                 SystemMessage(content="You are an expert at explaining candidate rankings clearly and comparatively."),
                 HumanMessage(content=prompt)
             ]
-            
+
             response = self.llm.invoke(messages)
             return response.content.strip()
-            
+
         except Exception as e:
             print(f"    ⚠️  Comparative analysis failed: {e}")
             return ""
 
 
-def scorer_node(state: Dict) -> Dict:
+def scorer_node(state: dict) -> dict:
     """
     LangGraph node: Score and rank all candidates
     """
     print("🏆 Scoring and ranking candidates...")
-    
+
     scorer = CandidateScorer()
-    
+
     ranked_candidates = scorer.score_and_rank_candidates(
         state["candidates"],
         state["job_requirements"],
@@ -348,14 +352,14 @@ def scorer_node(state: Dict) -> Dict:
         state["experience_scores"],
         state["education_scores"]
     )
-    
+
     # Convert to dicts for state
     candidate_scores = [rc.candidate_score.model_dump() for rc in ranked_candidates]
     ranked_dicts = [rc.model_dump() for rc in ranked_candidates]
-    
+
     print(f"✅ Scoring complete. Top candidate: {ranked_candidates[0].candidate_score.candidate_name} "
           f"({ranked_candidates[0].candidate_score.total_score:.1f}%)\n")
-    
+
     return {
         "candidate_scores": candidate_scores,
         "ranked_candidates": ranked_dicts,
@@ -366,11 +370,12 @@ def scorer_node(state: Dict) -> Dict:
 # Test independently
 if __name__ == "__main__":
     from src.models import (
-        Skill, SkillPriority, 
-        ExperienceRequirement, 
         EducationRequirement,
+        ExperienceRequirement,
+        Skill,
+        SkillPriority,
     )
-    
+
     # Mock data
     job = JobRequirements(
         job_title="Senior AI Engineer",
@@ -382,7 +387,7 @@ if __name__ == "__main__":
         experience=ExperienceRequirement(minimum_years=5),
         education=EducationRequirement(minimum_degree="Bachelor")
     )
-    
+
     # Candidate 1
     candidate1 = Candidate(
         name="Alice Johnson",
@@ -392,7 +397,7 @@ if __name__ == "__main__":
         work_experience=[],
         education=[]
     )
-    
+
     skill_score1 = SkillScore(
         candidate_name="Alice Johnson",
         matched_must_have=["Python", "TensorFlow"],
@@ -405,7 +410,7 @@ if __name__ == "__main__":
         overall_skill_score=100.0,
         skill_gap_analysis="Perfect skill match."
     )
-    
+
     exp_score1 = ExperienceScore(
         candidate_name="Alice Johnson",
         total_years=6.0,
@@ -418,7 +423,7 @@ if __name__ == "__main__":
         experience_match_score=95.0,
         experience_analysis="Excellent experience."
     )
-    
+
     edu_score1 = EducationScore(
         candidate_name="Alice Johnson",
         highest_degree="Master of Science",
@@ -428,21 +433,21 @@ if __name__ == "__main__":
         education_score=100.0,
         education_analysis="Exceeds requirements."
     )
-    
+
     scorer = CandidateScorer()
-    
+
     # Score single candidate
     candidate_score = scorer._score_candidate(
         candidate1, job, skill_score1, exp_score1, edu_score1
     )
-    
+
     print("\n" + "="*80)
     print("✅ CANDIDATE SCORE RESULT")
     print("="*80)
     print(f"\nCandidate: {candidate_score.candidate_name}")
     print(f"Total Score: {candidate_score.total_score:.1f}%")
     print(f"Recommendation: {candidate_score.recommendation} (Confidence: {candidate_score.confidence_level})")
-    print(f"\nComponent Scores:")
+    print("\nComponent Scores:")
     print(f"  - Skills: {candidate_score.weighted_skill_score:.1f} ({candidate_score.skill_score.overall_skill_score:.1f}% × {settings.SKILL_WEIGHT})")
     print(f"  - Experience: {candidate_score.weighted_experience_score:.1f} ({candidate_score.experience_score.experience_match_score:.1f}% × {settings.EXPERIENCE_WEIGHT})")
     print(f"  - Education: {candidate_score.weighted_education_score:.1f} ({candidate_score.education_score.education_score:.1f}% × {settings.EDUCATION_WEIGHT})")

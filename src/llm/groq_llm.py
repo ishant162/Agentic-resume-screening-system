@@ -1,6 +1,7 @@
 """GroqAPI LLM Module"""
 
 from langchain_groq import ChatGroq
+
 from config.settings import settings
 
 

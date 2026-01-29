@@ -1,0 +1,22 @@
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+# What to lint
+select = [
+  "E",   # pycodestyle errors
+  "W",   # pycodestyle warnings
+  "F",   # pyflakes
+  "I",   # isort
+  "UP",  # pyupgrade
+]
+
+ignore = [
+  "E501",  # line length (handled by formatter)
+]
+
+fix = true
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

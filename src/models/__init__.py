@@ -1,28 +1,28 @@
-from .candidate import Candidate, WorkExperience, Education, Project, Certification
+from .candidate import Candidate, Certification, Education, Project, WorkExperience
 from .job import (
-    JobRequirements, 
-    Skill, 
-    ExperienceRequirement, 
-    EducationRequirement, 
-    SkillLevel, 
-    SkillPriority
+    EducationRequirement,
+    ExperienceRequirement,
+    JobRequirements,
+    Skill,
+    SkillLevel,
+    SkillPriority,
 )
 from .score import (
-    SkillScore, 
-    ExperienceScore, 
-    EducationScore, 
-    CandidateScore, 
-    RankedCandidate
+    CandidateScore,
+    EducationScore,
+    ExperienceScore,
+    RankedCandidate,
+    SkillScore,
 )
 
 __all__ = [
     # Candidate models
     "Candidate",
-    "WorkExperience", 
+    "WorkExperience",
     "Education",
     "Project",
     "Certification",
-    
+
     # Job models
     "JobRequirements",
     "Skill",
@@ -30,7 +30,7 @@ __all__ = [
     "EducationRequirement",
     "SkillLevel",
     "SkillPriority",
-    
+
     # Score models
     "SkillScore",
     "ExperienceScore",

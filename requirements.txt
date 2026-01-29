@@ -48,3 +48,5 @@ requests-cache==1.2.1
 python-dateutil==2.9.0
 fuzzywuzzy==0.18.0
 python-Levenshtein==0.26.1
+
+ruff

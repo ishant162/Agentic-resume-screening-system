@@ -1,6 +1,7 @@
-import PyPDF2
-import pdfplumber
 import io
+
+import pdfplumber
+import PyPDF2
 
 
 class PDFExtractor:

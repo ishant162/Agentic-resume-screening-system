@@ -1,7 +1,7 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
-from typing import List, Optional
 from datetime import date
 from enum import Enum
+
+from pydantic import BaseModel, EmailStr, Field, field_validator
 
 
 class EmploymentType(str, Enum):
@@ -16,15 +16,15 @@ class WorkExperience(BaseModel):
     """Individual work experience entry"""
     company: str
     position: str
-    employment_type: Optional[EmploymentType] = EmploymentType.FULL_TIME
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None  # None means current
-    duration_months: Optional[int] = None
-    location: Optional[str] = None
-    description: Optional[str] = None
-    responsibilities: List[str] = Field(default_factory=list)
-    technologies: List[str] = Field(default_factory=list)
-    achievements: List[str] = Field(default_factory=list)
+    employment_type: EmploymentType | None = EmploymentType.FULL_TIME
+    start_date: date | None = None
+    end_date: date | None = None  # None means current
+    duration_months: int | None = None
+    location: str | None = None
+    description: str | None = None
+    responsibilities: list[str] = Field(default_factory=list)
+    technologies: list[str] = Field(default_factory=list)
+    achievements: list[str] = Field(default_factory=list)
 
     @property
     def is_current(self) -> bool:
@@ -47,12 +47,12 @@ class Education(BaseModel):
     institution: str
     degree: str  # e.g., "Bachelor of Technology", "Master of Science"
     field_of_study: str  # e.g., "Computer Science", "Data Science"
-    start_year: Optional[int] = None
-    end_year: Optional[int] = None
-    grade: Optional[str] = None  # GPA, percentage, or grade
-    location: Optional[str] = None
-    relevant_coursework: List[str] = Field(default_factory=list)
-    honors: List[str] = Field(default_factory=list)
+    start_year: int | None = None
+    end_year: int | None = None
+    grade: str | None = None  # GPA, percentage, or grade
+    location: str | None = None
+    relevant_coursework: list[str] = Field(default_factory=list)
+    honors: list[str] = Field(default_factory=list)
 
     @property
     def is_completed(self) -> bool:
@@ -63,24 +63,24 @@ class Project(BaseModel):
     """Personal or professional project"""
     name: str
     description: str
-    technologies: List[str] = Field(default_factory=list)
-    role: Optional[str] = None
-    start_date: Optional[date] = None
-    end_date: Optional[date] = None
-    url: Optional[str] = None
-    github_url: Optional[str] = None
-    achievements: List[str] = Field(default_factory=list)
-    team_size: Optional[int] = None
+    technologies: list[str] = Field(default_factory=list)
+    role: str | None = None
+    start_date: date | None = None
+    end_date: date | None = None
+    url: str | None = None
+    github_url: str | None = None
+    achievements: list[str] = Field(default_factory=list)
+    team_size: int | None = None
 
 
 class Certification(BaseModel):
     """Professional certifications"""
     name: str
     issuing_organization: str
-    issue_date: Optional[date] = None
-    expiry_date: Optional[date] = None
-    credential_id: Optional[str] = None
-    url: Optional[str] = None
+    issue_date: date | None = None
+    expiry_date: date | None = None
+    credential_id: str | None = None
+    url: str | None = None
 
     @property
     def is_valid(self) -> bool:
@@ -94,39 +94,39 @@ class Candidate(BaseModel):
 
     # Basic Information
     name: str
-    email: Optional[EmailStr] = None
-    phone: Optional[str] = None
-    location: Optional[str] = None
-    linkedin_url: Optional[str] = None
-    github_url: Optional[str] = None
-    portfolio_url: Optional[str] = None
+    email: EmailStr | None = None
+    phone: str | None = None
+    location: str | None = None
+    linkedin_url: str | None = None
+    github_url: str | None = None
+    portfolio_url: str | None = None
 
     # Professional Summary
-    summary: Optional[str] = None
+    summary: str | None = None
 
     # Skills
-    technical_skills: List[str] = Field(default_factory=list)
-    soft_skills: List[str] = Field(default_factory=list)
-    languages: List[str] = Field(default_factory=list)  # Programming languages
-    spoken_languages: List[str] = Field(default_factory=list)
-    tools_and_technologies: List[str] = Field(default_factory=list)
+    technical_skills: list[str] = Field(default_factory=list)
+    soft_skills: list[str] = Field(default_factory=list)
+    languages: list[str] = Field(default_factory=list)  # Programming languages
+    spoken_languages: list[str] = Field(default_factory=list)
+    tools_and_technologies: list[str] = Field(default_factory=list)
 
     # Experience
-    work_experience: List[WorkExperience] = Field(default_factory=list)
-    total_experience_months: Optional[int] = None
+    work_experience: list[WorkExperience] = Field(default_factory=list)
+    total_experience_months: int | None = None
 
     # Education
-    education: List[Education] = Field(default_factory=list)
+    education: list[Education] = Field(default_factory=list)
 
     # Additional
-    projects: List[Project] = Field(default_factory=list)
-    certifications: List[Certification] = Field(default_factory=list)
-    publications: List[str] = Field(default_factory=list)
-    awards: List[str] = Field(default_factory=list)
+    projects: list[Project] = Field(default_factory=list)
+    certifications: list[Certification] = Field(default_factory=list)
+    publications: list[str] = Field(default_factory=list)
+    awards: list[str] = Field(default_factory=list)
 
     # Metadata
-    resume_file_name: Optional[str] = None
-    parsed_date: Optional[date] = Field(default_factory=date.today)
+    resume_file_name: str | None = None
+    parsed_date: date | None = Field(default_factory=date.today)
 
     @property
     def total_experience_years(self) -> float:
@@ -136,7 +136,7 @@ class Candidate(BaseModel):
         return 0.0
 
     @property
-    def all_skills(self) -> List[str]:
+    def all_skills(self) -> list[str]:
         """Get all skills combined"""
         return (
             self.technical_skills +
@@ -146,7 +146,7 @@ class Candidate(BaseModel):
         )
 
     @property
-    def highest_education(self) -> Optional[Education]:
+    def highest_education(self) -> Education | None:
         """Get highest education level"""
         degree_hierarchy = {
             "phd": 5, "doctorate": 5,

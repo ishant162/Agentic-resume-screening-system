@@ -1,11 +1,11 @@
+
 from pydantic_settings import BaseSettings
-from typing import Optional
 
 
 class Settings(BaseSettings):
     # API Keys
     GEN_ENG_API_KEY: str
-    GROQ_API: Optional[str] = None
+    GROQ_API: str | None = None
 
     # Model settings
     MODEL_NAME: str = "llama-3.3-70b-versatile"

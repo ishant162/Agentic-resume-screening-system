@@ -118,7 +118,7 @@ SKILL_MATCHING_PROMPT = """
 
     5. **Additional Skills**: What relevant skills do they bring that weren't in the job description but add value?
 
-    6. **Match Percentages**: 
+    6. **Match Percentages**:
     - Calculate must-have match percentage (0-100): (matched / total must-have) * 100
     - Calculate nice-to-have match percentage (0-100): (matched / total nice-to-have) * 100
     - Calculate overall skill score: (must_have_pct * 0.8) + (nice_to_have_pct * 0.2)
@@ -313,11 +313,11 @@ FINAL_CANDIDATE_ASSESSMENT_PROMPT = """
     - Skills: {skills_score}% (Weight: {skills_weight}%)
     - Must-have match: {must_have_match}%
     - Missing critical: {missing_must_have}
-    
+
     - Experience: {experience_score}% (Weight: {experience_weight}%)
     - Years: {total_years} (Required: {required_years})
     - Trajectory: {career_trajectory}
-    
+
     - Education: {education_score}% (Weight: {education_weight}%)
     - Degree: {highest_degree}
     - Meets req: {meets_education_requirement}
@@ -455,4 +455,210 @@ INTERVIEW_QUESTION_GENERATION_PROMPT = """
     "Question 2 text here",
     ...
     ]
+"""
+
+COMPANY_CONTEXT_EXPERIENCE_ANALYSIS_PROMPT = """
+    Analyze this candidate's experience with company context.
+
+    **Target Role:** {job_title}
+    **Required Experience:** {required_experience_years} years
+    **Target Domains:** {target_domains}
+
+    **Candidate:** {candidate_name}
+    **Total Experience:** {total_experience_years} years
+
+    **Work History with Company Context:**
+    {work_summary}
+
+    **Task:**
+    Provide comprehensive experience analysis in JSON:
+
+    {{
+        "relevant_years": <float: estimated relevant experience>,
+        "domain_match": <bool: worked in similar domains>,
+        "relevant_domains": [<list of relevant domain names>],
+        "has_progression": <bool: clear career growth>,
+        "trajectory": "<upward|lateral|specialist|pivot|early-career>",
+        "company_quality_assessment": "<assessment of companies they worked for>",
+        "comprehensive_analysis": "<4-5 sentences covering: relevance, company context, trajectory, readiness>"
+    }}
+
+    Consider:
+    - Tech stack alignment between their companies and target role
+    - Company reputation and industry relevance
+    - Career progression pattern
+    - Transferable experience
+"""
+
+ANALYSIS_QUALITY_ASSURANCE_PROMPT = """
+    You are a quality assurance agent reviewing your own hiring analysis.
+
+    **Job:** {job_title}
+    **Candidates Screened:** {candidates_screened}
+
+    **Top 3 Results:**
+    {top_3_summary}
+
+    **Issues Detected So Far:**
+    {current_issues}
+
+    **Self-Reflection Questions:**
+    1. Is the analysis complete and thorough?
+    2. Do the scores and rankings make sense?
+    3. Are there any inconsistencies or red flags?
+    4. Is the data sufficient for confident recommendations?
+    5. Should any candidates be re-analyzed with more scrutiny?
+
+    **Task:**
+    Perform honest self-critique and return JSON:
+
+    {{
+        "overall_confidence": <float 0.0-1.0>,
+        "issues": [
+            "<list any additional issues you notice>",
+            "<be critical and thorough>"
+        ],
+        "recommendations": [
+            "<suggestions to improve analysis quality>",
+            "<what should be done differently>"
+        ],
+        "assessment": "<2-3 sentences overall quality assessment>"
+    }}
+
+    Be honest and critical - this is for quality assurance.
+"""
+
+SEMANTIC_SKILL_MATCH_ANALYSIS_PROMPT = """
+    Analyze this candidate's skill match with semantic understanding.
+
+    Candidate: {candidate_name}
+
+    **Exact Matches:**
+    Must-have: {matched_must_have}
+    Nice-to-have: {matched_nice_to_have}
+
+    **Equivalent/Related Skills Found:**
+    {equivalent_skills}
+
+    **Missing Critical Skills:**
+    {missing_critical_skills}
+
+    **Additional Skills:**
+    {additional_skills}
+
+    Write a 4-5 sentence analysis that:
+    1. Highlights their strengths
+    2. Explains equivalent skill matches (e.g., "has PyTorch which is equivalent to required TensorFlow")
+    3. Addresses gaps honestly
+    4. Assesses overall technical fit
+
+    Be specific about transferable skills.
+"""
+
+VERIFICATION_TOOL_SELECTION_PROMPT = """
+    You are a hiring coordinator deciding which verification tools to use for a candidate.
+
+    **Job Role:** {job_title}
+
+    **Candidate Summary:**
+    {candidate_summary}
+
+    **Available Tools:**
+    {tools_description}
+
+    **Decision Criteria:**
+    - Use tools that add value and validate important claims
+    - Don't use tools if data is already clear/verified
+    - Prioritize tools based on role requirements
+    - Consider cost/time (each tool takes time)
+
+    **Task:**
+    Decide which tools to use for this candidate. Return JSON:
+
+    {{
+        "tools": ["tool1", "tool2"],  // List of: "web_search", "github", "skill_taxonomy"
+        "reasoning": "<2-3 sentences explaining your choices>",
+        "priority": "high|medium|low"  // How important is thorough verification for this candidate
+    }}
+
+    Be strategic - not every candidate needs every tool.
+"""
+
+HIRING_BIAS_ANALYSIS_PROMPT = """
+    Analyze this hiring decision for potential biases.
+
+    Job: {job_title}
+
+    Top 3 Ranked Candidates:
+    {top_3_summary}
+
+    Total Candidates Screened: {total_candidates}
+
+    Look for:
+    1. Overemphasis on prestigious universities
+    2. Unconscious favoritism patterns
+    3. Arbitrary requirement enforcement
+    4. Any other subtle biases
+
+    Return JSON:
+    {{
+        "detected_biases": [
+            {{
+                "type": "<bias type>",
+                "detected": true,
+                "severity": "<Low|Medium|High>",
+                "description": "<explanation>",
+                "recommendation": "<what to do>"
+            }}
+        ]
+    }}
+
+    Only include biases you actually detect. If none, return empty list.
+"""
+
+SALARY_PREMIUM_SKILL_ANALYSIS_PROMPT = """
+    Analyze if this candidate has skills that command a salary premium.
+
+    Candidate Skills:
+    {candidate_skills}
+
+    Job Context:
+    {job_title}
+
+    Premium skills typically include:
+    - Rare/specialized technologies (e.g., Rust, Quantum Computing)
+    - High-demand frameworks (e.g., latest LLMs, cutting-edge AI)
+    - Leadership/architecture skills
+    - Multiple complementary skillsets
+
+    Return JSON:
+    {{
+        "premium": <float 0.0-0.3, where 0.3 is 30% premium>,
+        "reasoning": "<1-2 sentences explaining premium or lack thereof>"
+    }}
+"""
+
+SALARY_ESTIMATE_EXPLANATION_PROMPT = """
+    Explain this salary estimate for a hiring manager.
+
+    Candidate: {candidate_name}
+    Position: {job_title}
+    Experience Level: {experience_level}
+    Years of Experience: {years_of_experience}
+    Location: {location}
+
+    Estimated Salary Range: ${salary_min} - ${salary_max}
+    Median: ${salary_median}
+
+    Adjustment Factors:
+    - Location Multiplier: {location_multiplier}x
+    - Industry Multiplier: {industry_multiplier}x
+    - Skills Premium: +{skills_premium}%
+
+    Write a 3-4 sentence explanation covering:
+    1. How the base salary was determined
+    2. Why the adjustments were applied
+    3. Where this falls in market range
+
+    Be professional and data-driven.
 """

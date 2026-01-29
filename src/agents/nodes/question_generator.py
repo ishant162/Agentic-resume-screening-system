@@ -1,45 +1,42 @@
+
 from langchain_core.messages import HumanMessage, SystemMessage
-from src.models import (
-    Candidate,
-    JobRequirements,
-    CandidateScore
-)
-from src.llm.groq_llm import GroqLLM
+
 from config.prompts import INTERVIEW_QUESTION_GENERATION_PROMPT
-from typing import List, Dict
+from src.llm.groq_llm import GroqLLM
+from src.models import Candidate, CandidateScore, JobRequirements
 
 
 class QuestionGenerator:
     """Generates personalized interview questions for candidates"""
-    
+
     def __init__(self):
         self.llm = GroqLLM().get_llm_model()
-    
+
     def generate_questions_for_candidates(
         self,
-        candidates: List[Dict],
-        job_requirements: Dict,
-        candidate_scores: List[Dict]
-    ) -> Dict[str, List[str]]:
+        candidates: list[dict],
+        job_requirements: dict,
+        candidate_scores: list[dict]
+    ) -> dict[str, list[str]]:
         """
         Generate personalized interview questions for all candidates
-        
+
         Args:
             candidates: List of candidate dicts
             job_requirements: Job requirements dict
             candidate_scores: List of candidate score dicts
-            
+
         Returns:
             Dictionary mapping candidate names to question lists
         """
         print("🎤 Generating personalized interview questions...")
-        
+
         job_req = JobRequirements(**job_requirements)
         candidate_models = [Candidate(**c) for c in candidates]
         score_models = [CandidateScore(**cs) for cs in candidate_scores]
-        
+
         all_questions = {}
-        
+
         for candidate, score in zip(candidate_models, score_models):
             questions = self._generate_questions_for_candidate(
                 candidate,
@@ -47,20 +44,20 @@ class QuestionGenerator:
                 score
             )
             all_questions[candidate.name] = questions
-            
+
             print(f"  ✅ Generated {len(questions)} questions for {candidate.name}")
-        
+
         return all_questions
-    
+
     def _generate_questions_for_candidate(
         self,
         candidate: Candidate,
         job_requirements: JobRequirements,
         candidate_score: CandidateScore
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Generate personalized questions for a single candidate
-        
+
         Questions should:
         - Test required skills
         - Probe skill gaps
@@ -68,7 +65,7 @@ class QuestionGenerator:
         - Assess cultural fit
         - Be specific to their background
         """
-        
+
         # Prepare candidate context
         work_summary = self._format_work_experience(candidate.work_experience[:2])
 
@@ -98,9 +95,9 @@ class QuestionGenerator:
                 SystemMessage(content="You are an expert technical interviewer who creates insightful, personalized questions."),
                 HumanMessage(content=prompt)
             ]
-            
+
             response = self.llm.invoke(messages)
-            
+
             # Parse JSON
             import json
             response_text = response.content.strip()
@@ -108,27 +105,27 @@ class QuestionGenerator:
                 response_text = response_text.split("```json")[1].split("```")[0]
             elif "```" in response_text:
                 response_text = response_text.split("```")[1].split("```")[0]
-            
+
             questions = json.loads(response_text.strip())
-            
+
             # Validate it's a list
             if isinstance(questions, list):
                 return questions
             else:
-                print(f"    ⚠️  LLM returned non-list format")
+                print("    ⚠️  LLM returned non-list format")
                 return self._generate_fallback_questions(candidate, job_requirements)
-            
+
         except Exception as e:
             print(f"    ⚠️  Question generation failed: {e}")
             return self._generate_fallback_questions(candidate, job_requirements)
-    
+
     def _generate_fallback_questions(
         self,
         candidate: Candidate,
         job_requirements: JobRequirements
-    ) -> List[str]:
+    ) -> list[str]:
         """Generate basic fallback questions"""
-        
+
         questions = [
             f"Tell me about your experience with {candidate.technical_skills[0] if candidate.technical_skills else 'the technologies'} mentioned in your resume.",
             f"Can you walk me through a challenging project from your time at {candidate.work_experience[0].company if candidate.work_experience else 'your previous company'}?",
@@ -141,43 +138,43 @@ class QuestionGenerator:
             "How do you stay updated with industry trends and new technologies?",
             "Can you describe your development workflow and tools you prefer?"
         ]
-        
+
         return questions
-    
-    def _format_work_experience(self, experiences: List) -> str:
+
+    def _format_work_experience(self, experiences: list) -> str:
         """Format work experience for prompt"""
         if not experiences:
             return "No work experience listed"
-        
+
         summary = []
         for exp in experiences:
             summary.append(f"- {exp.position} at {exp.company}")
             if exp.responsibilities:
                 summary.append(f"  Responsibilities: {'; '.join(exp.responsibilities[:2])}")
-        
+
         return "\n".join(summary)
-    
-    def _format_list(self, items: List[str]) -> str:
+
+    def _format_list(self, items: list[str]) -> str:
         """Format list for prompt"""
         return "\n".join(f"- {item}" for item in items)
 
 
-def question_generator_node(state: Dict) -> Dict:
+def question_generator_node(state: dict) -> dict:
     """
     LangGraph node: Generate interview questions for all candidates
     """
     print("🎤 Generating personalized interview questions...")
-    
+
     generator = QuestionGenerator()
-    
+
     questions = generator.generate_questions_for_candidates(
         state["candidates"],
         state["job_requirements"],
         state["candidate_scores"]
     )
-    
+
     print(f"✅ Generated questions for {len(questions)} candidates\n")
-    
+
     return {
         "interview_questions": questions,
         "current_step": "question_generation_complete"
@@ -186,17 +183,19 @@ def question_generator_node(state: Dict) -> Dict:
 
 # Test independently
 if __name__ == "__main__":
-    from src.models import (
-        Skill, SkillPriority,
-        ExperienceRequirement,
-        EducationRequirement,
-        WorkExperience,
-        SkillScore,
-        ExperienceScore,
-        EducationScore
-    )
     from datetime import date
-    
+
+    from src.models import (
+        EducationRequirement,
+        EducationScore,
+        ExperienceRequirement,
+        ExperienceScore,
+        Skill,
+        SkillPriority,
+        SkillScore,
+        WorkExperience,
+    )
+
     # Mock data
     job = JobRequirements(
         job_title="Senior AI Engineer",
@@ -208,7 +207,7 @@ if __name__ == "__main__":
         experience=ExperienceRequirement(minimum_years=5),
         education=EducationRequirement(minimum_degree="Bachelor")
     )
-    
+
     candidate = Candidate(
         name="Sarah Chen",
         technical_skills=["Python", "TensorFlow", "Docker", "AWS"],
@@ -228,7 +227,7 @@ if __name__ == "__main__":
         ],
         education=[]
     )
-    
+
     # Mock score
     candidate_score = CandidateScore(
         candidate_name="Sarah Chen",
@@ -277,16 +276,16 @@ if __name__ == "__main__":
         red_flags=[],
         detailed_analysis="Strong candidate"
     )
-    
+
     generator = QuestionGenerator()
     questions = generator._generate_questions_for_candidate(candidate, job, candidate_score)
-    
+
     print("\n" + "="*80)
     print(f"✅ INTERVIEW QUESTIONS FOR {candidate.name}")
     print("="*80)
     print(f"\nGenerated {len(questions)} personalized questions:\n")
-    
+
     for i, q in enumerate(questions, 1):
         print(f"{i}. {q}\n")
-    
+
     print("="*80)

@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Resume Screening Agent - CLI Runner
+Enhanced Resume Screening Agent - CLI Runner
 
 Usage:
-    python scripts/run_agent.py --job path/to/job.txt --resumes path/to/resume1.pdf path/to/resume2.pdf
+    python scripts/run_enhanced_agent.py --job path/to/job.txt --resumes path/to/resume1.pdf path/to/resume2.pdf
 """
 
 import argparse
@@ -14,7 +14,7 @@ from pathlib import Path
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from src.agents.graph.graph_builder import create_screening_graph
+from src.agents.graph.graph_enhanced import create_enhanced_screening_graph
 
 
 def load_job_description(job_path: str) -> str:
@@ -51,9 +51,8 @@ def save_report(report: str, output_dir: str) -> Path:
     output_path = Path(output_dir)
     output_path.mkdir(parents=True, exist_ok=True)
 
-    # Create filename with timestamp
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    report_file = output_path / f"screening_report_{timestamp}.md"
+    report_file = output_path / f"enhanced_screening_report_{timestamp}.md"
 
     with open(report_file, 'w', encoding='utf-8') as f:
         f.write(report)
@@ -95,6 +94,35 @@ def print_summary(result: dict):
     candidates = result.get("candidates", [])
     print(f"👥 Candidates Screened: {len(candidates)}")
 
+    # Tool usage summary
+    tool_plan = result.get("tool_plan", {})
+    if tool_plan:
+        print("\n🔧 Tool Usage:")
+        web_search_count = sum(1 for plan in tool_plan.values() if "web_search" in plan.get("tools", []))
+        github_count = sum(1 for plan in tool_plan.values() if "github" in plan.get("tools", []))
+        taxonomy_count = sum(1 for plan in tool_plan.values() if "skill_taxonomy" in plan.get("tools", []))
+
+        print(f"  Web Search: {web_search_count} candidates")
+        print(f"  GitHub Analysis: {github_count} candidates")
+        print(f"  Skill Taxonomy: {taxonomy_count} candidates")
+
+    # Quality check
+    quality_check = result.get("quality_check", {})
+    if quality_check:
+        print("\n✅ Quality Check:")
+        print(f"  Confidence: {quality_check.get('confidence', 0):.0%}")
+        print(f"  Re-analysis needed: {quality_check.get('needs_reanalysis', False)}")
+        reanalysis_count = result.get("reanalysis_count", 0)
+        if reanalysis_count > 0:
+            print(f"  Re-analysis iterations: {reanalysis_count}")
+
+    # Bias analysis
+    bias_analysis = result.get("bias_analysis", {})
+    if bias_analysis:
+        print("\n⚖️  Bias Analysis:")
+        print(f"  Bias Score: {bias_analysis.get('bias_score', 0):.1f}/100 (lower is better)")
+        print(f"  Assessment: {bias_analysis.get('fairness_assessment', 'N/A')}")
+
     # Top candidate
     ranked = result.get("ranked_candidates", [])
     if ranked:
@@ -104,6 +132,19 @@ def print_summary(result: dict):
         print(f"   Name: {candidate_score.get('candidate_name', 'N/A')}")
         print(f"   Score: {candidate_score.get('total_score', 0):.1f}%")
         print(f"   Recommendation: {candidate_score.get('recommendation', 'N/A')}")
+
+        # Salary estimate
+        salary_estimates = result.get("salary_estimates", {})
+        if candidate_score.get('candidate_name') in salary_estimates:
+            salary = salary_estimates[candidate_score['candidate_name']]
+            median = salary.get('adjusted_range', {}).get('median', 0)
+            print(f"   Estimated Salary: ${median:,}")
+
+        # ATS score
+        ats_scores = result.get("ats_scores", {})
+        if candidate_score.get('candidate_name') in ats_scores:
+            ats = ats_scores[candidate_score['candidate_name']]
+            print(f"   ATS Score: {ats.get('overall_score', 0):.1f}/100")
 
     # Show all rankings
     print("\n📊 All Rankings:")
@@ -120,20 +161,20 @@ def print_summary(result: dict):
 
 def main():
     parser = argparse.ArgumentParser(
-        description='Resume Screening AI Agent',
+        description='Enhanced Agentic Resume Screening Agent',
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
-            Examples:
-            # Screen multiple resumes for a job
-            python scripts/run_agent.py \\
-                --job data/sample_jobs/ai_engineer.txt \\
-                --resumes data/sample_resumes/candidate_1.pdf data/sample_resumes/candidate_2.pdf
+Examples:
+  # Screen multiple resumes with enhanced analysis
+  python scripts/run_enhanced_agent.py \\
+      --job data/sample_jobs/ai_engineer.txt \\
+      --resumes data/sample_resumes/candidate_1.pdf data/sample_resumes/candidate_2.pdf
 
-            # Specify custom output directory
-            python scripts/run_agent.py \\
-                --job job.txt \\
-                --resumes resume1.pdf resume2.pdf resume3.pdf \\
-                --output ./results
+  # Specify custom output directory
+  python scripts/run_enhanced_agent.py \\
+      --job job.txt \\
+      --resumes resume1.pdf resume2.pdf \\
+      --output ./results
         """
     )
 
@@ -170,7 +211,7 @@ def main():
         sys.exit(1)
 
     print("="*80)
-    print("RESUME SCREENING AGENT")
+    print("ENHANCED AGENTIC RESUME SCREENING AGENT")
     print("="*80)
     print(f"\n📋 Job Description: {args.job}")
     print(f"📄 Resumes to screen: {len(args.resumes)}")
@@ -178,7 +219,7 @@ def main():
         print(f"   - {resume}")
     print(f"💾 Output directory: {args.output}")
     print("\n" + "="*80)
-    print("STARTING WORKFLOW...")
+    print("STARTING ENHANCED WORKFLOW...")
     print("="*80 + "\n")
 
     try:
@@ -199,14 +240,18 @@ def main():
             "resumes": resumes,
             "resume_filenames": filenames,
             "candidates": [],
-            "errors": []
+            "errors": [],
+            "reanalysis_count": 0
         }
 
-        # Create and run the graph
-        print("🤖 Initializing AI agent workflow...\n")
-        app = create_screening_graph()
+        # Create and run the enhanced graph
+        print("🤖 Initializing enhanced agentic workflow...\n")
+        app = create_enhanced_screening_graph()
 
-        print("▶️  Executing workflow...\n")
+        print("\n" + "="*80)
+        print("▶️  EXECUTING ENHANCED WORKFLOW")
+        print("="*80 + "\n")
+
         result = app.invoke(initial_state)
 
         # Check for errors
@@ -234,7 +279,7 @@ def main():
         # Print summary
         print_summary(result)
 
-        print("\n✅ Screening complete!")
+        print("\n✅ Enhanced screening complete!")
         print(f"\n📁 View results in: {args.output}/")
 
     except KeyboardInterrupt:

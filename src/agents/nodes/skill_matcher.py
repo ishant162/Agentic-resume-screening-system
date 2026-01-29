@@ -1,61 +1,56 @@
+import json
+
 from langchain_core.messages import HumanMessage, SystemMessage
+
 from config.prompts import SKILL_MATCHING_PROMPT
 from src.llm.groq_llm import GroqLLM
-from src.models import (
-    Candidate, 
-    JobRequirements, 
-    SkillScore, 
-    Skill, 
-    SkillPriority
-)
-from typing import Dict
-import json
+from src.models import Candidate, JobRequirements, Skill, SkillPriority, SkillScore
 
 
 class SkillMatcher:
     """AI-powered skill matcher using LLM for intelligent analysis"""
-    
+
     def __init__(self):
         self.llm = GroqLLM().get_llm_model()
-    
+
     def match_skills(
-        self, 
-        candidate: Candidate, 
+        self,
+        candidate: Candidate,
         job_requirements: JobRequirements
     ) -> SkillScore:
         """
         Use LLM to intelligently match and analyze candidate skills
-        
+
         This uses AI to:
         - Recognize similar/related skills (e.g., PyTorch ≈ TensorFlow)
         - Understand skill transferability
         - Provide contextual gap analysis
         - Consider experience levels and depth
-        
+
         Args:
             candidate: Candidate object
             job_requirements: JobRequirements object
-            
+
         Returns:
             SkillScore with AI-powered analysis
         """
         print(f"  🤖 AI analyzing skills for {candidate.name}...")
-        
+
         # Prepare data for the prompt template
         must_have_skills_list = [
-            f"{s.name} ({s.years_required}+ years)" if s.years_required 
-            else s.name 
+            f"{s.name} ({s.years_required}+ years)" if s.years_required
+            else s.name
             for s in job_requirements.must_have_skills
         ]
-        
+
         nice_to_have_skills_list = [
             s.name for s in job_requirements.nice_to_have_skills
         ]
-        
+
         recent_projects_str = ', '.join([
             p.name for p in candidate.projects[:3]
         ]) if candidate.projects else 'None listed'
-        
+
         # Format the prompt using SKILL_MATCHING_PROMPT template
         prompt = SKILL_MATCHING_PROMPT.format(
             must_have_skills=', '.join(must_have_skills_list) if must_have_skills_list else 'None',
@@ -65,7 +60,7 @@ class SkillMatcher:
             total_experience=candidate.total_experience_years,
             recent_projects=recent_projects_str
         )
-        
+
         # Call LLM with system message for context
         messages = [
             SystemMessage(
@@ -81,13 +76,13 @@ class SkillMatcher:
             ),
             HumanMessage(content=prompt)
         ]
-        
+
         response = self.llm.invoke(messages)
-        
+
         # Parse LLM response
         try:
             skill_analysis = self._parse_llm_response(response.content)
-            
+
             # Create SkillScore object
             return SkillScore(
                 candidate_name=candidate.name,
@@ -101,49 +96,49 @@ class SkillMatcher:
                 overall_skill_score=round(skill_analysis["overall_skill_score"], 1),
                 skill_gap_analysis=skill_analysis["skill_gap_analysis"]
             )
-            
+
         except Exception as e:
             print(f"  ⚠️  Error parsing LLM response: {e}")
             print(f"  Response was: {response.content[:200]}...")
             # Fallback to basic matching
             return self._fallback_matching(candidate, job_requirements)
-    
-    def _parse_llm_response(self, response_text: str) -> Dict:
+
+    def _parse_llm_response(self, response_text: str) -> dict:
         """Extract JSON from LLM response"""
         # Handle markdown code blocks
         if "```json" in response_text:
             response_text = response_text.split("```json")[1].split("```")[0]
         elif "```" in response_text:
             response_text = response_text.split("```")[1].split("```")[0]
-        
+
         # Parse JSON
         return json.loads(response_text.strip())
-    
+
     def _fallback_matching(
-        self, 
-        candidate: Candidate, 
+        self,
+        candidate: Candidate,
         job_requirements: JobRequirements
     ) -> SkillScore:
         """Fallback to basic rule-based matching if LLM fails"""
         print(f"  ⚠️  Using fallback matching for {candidate.name}")
-        
+
         candidate_skills_set = set(skill.lower() for skill in candidate.all_skills)
         must_have_skills = job_requirements.must_have_skills
-        
+
         matched_must_have = [
-            s.name for s in must_have_skills 
+            s.name for s in must_have_skills
             if s.name.lower() in candidate_skills_set
         ]
         missing_must_have = [
-            s.name for s in must_have_skills 
+            s.name for s in must_have_skills
             if s.name.lower() not in candidate_skills_set
         ]
-        
+
         must_have_match_pct = (
             (len(matched_must_have) / len(must_have_skills) * 100)
             if must_have_skills else 100.0
         )
-        
+
         return SkillScore(
             candidate_name=candidate.name,
             matched_must_have=matched_must_have,
@@ -158,29 +153,29 @@ class SkillMatcher:
         )
 
 
-def skill_matcher_node(state: Dict) -> Dict:
+def skill_matcher_node(state: dict) -> dict:
     """
     LangGraph node: AI-powered skill matching for all candidates
     """
     print("🎯 AI-powered skill matching in progress...")
-    
+
     matcher = SkillMatcher()
-    
+
     # Convert job_requirements dict back to model
     job_req = JobRequirements(**state["job_requirements"])
-    
+
     skill_scores = []
-    
+
     for candidate_data in state["candidates"]:
         candidate = Candidate(**candidate_data)
         skill_score = matcher.match_skills(candidate, job_req)
         skill_scores.append(skill_score.model_dump())
-        
+
         print(f"  ✅ {candidate.name}: {skill_score.overall_skill_score:.1f}% match "
               f"({len(skill_score.matched_must_have)}/{len(job_req.must_have_skills)} must-haves)")
-    
+
     print("✅ Skill matching complete!\n")
-    
+
     return {
         "skill_scores": skill_scores,
         "current_step": "skill_matching_complete"
@@ -189,8 +184,8 @@ def skill_matcher_node(state: Dict) -> Dict:
 
 # Test independently
 if __name__ == "__main__":
-    from src.models import ExperienceRequirement, EducationRequirement, Project
-    
+    from src.models import EducationRequirement, ExperienceRequirement, Project
+
     # Mock job requirements
     job = JobRequirements(
         job_title="AI Engineer",
@@ -204,7 +199,7 @@ if __name__ == "__main__":
         experience=ExperienceRequirement(minimum_years=3),
         education=EducationRequirement(minimum_degree="Bachelor")
     )
-    
+
     # Mock candidate
     candidate = Candidate(
         name="John Doe",
@@ -213,10 +208,10 @@ if __name__ == "__main__":
         education=[],
         projects=[Project(name="Image Classification", description="Built CNN", technologies=["PyTorch"])]
     )
-    
+
     matcher = SkillMatcher()
     score = matcher.match_skills(candidate, job)
-    
+
     print("\n" + "="*60)
     print("✅ AI-Powered Skill Match Result:")
     print("="*60)

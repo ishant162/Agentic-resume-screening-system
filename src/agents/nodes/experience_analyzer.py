@@ -1,66 +1,62 @@
+from datetime import date
+
 from langchain_core.messages import HumanMessage, SystemMessage
-from src.models import (
-    Candidate, 
-    JobRequirements, 
-    ExperienceScore,
-    WorkExperience
+
+from config.prompts import (
+    CAREER_PROGRESSION_ANALYSIS_PROMPT,
+    EXPERIENCE_ASSESSMENT_PROMPT,
+    WORK_EXPERIENCE_RELEVANCE_PROMPT,
 )
 from src.llm.groq_llm import GroqLLM
-from config.prompts import (
-    WORK_EXPERIENCE_RELEVANCE_PROMPT,
-    CAREER_PROGRESSION_ANALYSIS_PROMPT,
-    EXPERIENCE_ASSESSMENT_PROMPT
-)
-from typing import List, Dict
-from datetime import date
+from src.models import Candidate, ExperienceScore, JobRequirements, WorkExperience
 
 
 class ExperienceAnalyzer:
     """Analyzes candidate work experience using LLM for intelligent assessment"""
-    
+
     def __init__(self):
         self.llm = GroqLLM().get_llm_model()
-    
+
     def analyze_experience(
-        self, 
-        candidate: Candidate, 
+        self,
+        candidate: Candidate,
         job_requirements: JobRequirements
     ) -> ExperienceScore:
         """
         Analyze candidate's work experience comprehensively
-        
+
         Uses LLM to assess:
         - Experience relevance and depth
         - Career trajectory and progression
         - Domain/industry alignment
         - Role complexity and responsibilities
         - Leadership and impact
-        
+
         Args:
             candidate: Candidate object
             job_requirements: JobRequirements object
-            
+
         Returns:
             ExperienceScore with detailed analysis
         """
         print(f"  📊 Analyzing experience for {candidate.name}...")
-        
+
         # Basic metrics
         total_years = candidate.total_experience_years
         required_years = job_requirements.experience.minimum_years or 0
-        
+
         # Determine relevant experience using LLM
         relevant_analysis = self._analyze_relevant_experience(
             candidate,
             job_requirements
         )
-        
+
         # Analyze career progression using LLM
         progression_analysis = self._analyze_career_progression(
             candidate.work_experience,
             job_requirements
         )
-        
+
         # Calculate score based on analysis
         experience_match_score = self._calculate_experience_score(
             total_years,
@@ -68,7 +64,7 @@ class ExperienceAnalyzer:
             relevant_analysis,
             progression_analysis
         )
-        
+
         # Generate comprehensive analysis
         final_analysis = self._generate_comprehensive_analysis(
             candidate,
@@ -78,7 +74,7 @@ class ExperienceAnalyzer:
             total_years,
             required_years
         )
-        
+
         return ExperienceScore(
             candidate_name=candidate.name,
             total_years=total_years,
@@ -91,21 +87,21 @@ class ExperienceAnalyzer:
             experience_match_score=round(experience_match_score, 1),
             experience_analysis=final_analysis
         )
-    
+
     def _analyze_relevant_experience(
         self,
         candidate: Candidate,
         job_requirements: JobRequirements
-    ) -> Dict:
+    ) -> dict:
         """
         Use LLM to determine which experience is relevant to the role
-        
+
         This is more nuanced than simple keyword matching - the LLM can understand:
         - Transferable skills across domains
         - Similar role responsibilities
         - Industry adjacency
         """
-        
+
         # Prepare work history summary
         work_summary = self._format_work_history(candidate.work_experience)
 
@@ -126,9 +122,9 @@ class ExperienceAnalyzer:
                 SystemMessage(content="You are an expert at assessing work experience relevance with nuance and fairness."),
                 HumanMessage(content=prompt)
             ]
-            
+
             response = self.llm.invoke(messages)
-            
+
             # Parse JSON response
             import json
             response_text = response.content.strip()
@@ -136,10 +132,10 @@ class ExperienceAnalyzer:
                 response_text = response_text.split("```json")[1].split("```")[0]
             elif "```" in response_text:
                 response_text = response_text.split("```")[1].split("```")[0]
-            
+
             analysis = json.loads(response_text.strip())
             return analysis
-            
+
         except Exception as e:
             print(f"    ⚠️  LLM relevance analysis failed: {e}")
             # Fallback: assume all experience is relevant
@@ -149,32 +145,32 @@ class ExperienceAnalyzer:
                 "relevant_domains": [],
                 "relevance_reasoning": "Unable to assess relevance automatically."
             }
-    
+
     def _analyze_career_progression(
         self,
-        work_history: List[WorkExperience],
+        work_history: list[WorkExperience],
         job_requirements: JobRequirements
-    ) -> Dict:
+    ) -> dict:
         """
         Use LLM to analyze career trajectory and progression
-        
+
         Assesses:
         - Role level progression (junior → senior → lead)
         - Increasing responsibility
         - Skill development trajectory
         - Career direction alignment with target role
         """
-        
+
         if not work_history:
             return {
                 "has_progression": False,
                 "trajectory": "unknown",
                 "progression_reasoning": "No work history available."
             }
-        
+
         # Format work history chronologically
         work_summary = self._format_work_history_chronological(work_history)
-        
+
         prompt = CAREER_PROGRESSION_ANALYSIS_PROMPT.format(
             job_title=job_requirements.job_title,
             work_summary=work_summary,
@@ -185,9 +181,9 @@ class ExperienceAnalyzer:
                 SystemMessage(content="You are an expert career analyst who understands professional growth patterns."),
                 HumanMessage(content=prompt)
             ]
-            
+
             response = self.llm.invoke(messages)
-            
+
             # Parse JSON
             import json
             response_text = response.content.strip()
@@ -195,10 +191,10 @@ class ExperienceAnalyzer:
                 response_text = response_text.split("```json")[1].split("```")[0]
             elif "```" in response_text:
                 response_text = response_text.split("```")[1].split("```")[0]
-            
+
             analysis = json.loads(response_text.strip())
             return analysis
-            
+
         except Exception as e:
             print(f"    ⚠️  LLM progression analysis failed: {e}")
             return {
@@ -206,30 +202,30 @@ class ExperienceAnalyzer:
                 "trajectory": "unknown",
                 "progression_reasoning": "Unable to assess progression automatically."
             }
-    
+
     def _calculate_experience_score(
         self,
         total_years: float,
         required_years: int,
-        relevance_analysis: Dict,
-        progression_analysis: Dict
+        relevance_analysis: dict,
+        progression_analysis: dict
     ) -> float:
         """
         Calculate numerical experience match score (0-100)
-        
+
         Scoring factors:
         - Years match (40%): Does experience meet minimum?
         - Relevance (35%): How relevant is the experience?
         - Progression (25%): Career trajectory quality
         """
-        
+
         # Years score (40 points)
         if required_years == 0:
             years_score = 40.0
         else:
             years_ratio = total_years / required_years
             years_score = min(40.0, years_ratio * 40.0)
-        
+
         # Relevance score (35 points)
         relevant_years = relevance_analysis.get("relevant_years", total_years)
         if total_years > 0:
@@ -237,11 +233,11 @@ class ExperienceAnalyzer:
             relevance_score = relevance_ratio * 35.0
         else:
             relevance_score = 0.0
-        
+
         # Domain match bonus
         if relevance_analysis.get("domain_match", False):
             relevance_score = min(35.0, relevance_score + 5.0)
-        
+
         # Progression score (25 points)
         trajectory = progression_analysis.get("trajectory", "unknown")
         progression_map = {
@@ -254,22 +250,22 @@ class ExperienceAnalyzer:
             "unknown": 10.0
         }
         progression_score = progression_map.get(trajectory, 10.0)
-        
+
         total_score = years_score + relevance_score + progression_score
         return min(100.0, total_score)
-    
+
     def _generate_comprehensive_analysis(
         self,
         candidate: Candidate,
         job_requirements: JobRequirements,
-        relevance_analysis: Dict,
-        progression_analysis: Dict,
+        relevance_analysis: dict,
+        progression_analysis: dict,
         total_years: float,
         required_years: int
     ) -> str:
         """
         Generate final comprehensive experience analysis using LLM
-        
+
         This creates a holistic narrative that synthesizes all insights
         """
         prompt = EXPERIENCE_ASSESSMENT_PROMPT.format(
@@ -300,10 +296,10 @@ class ExperienceAnalyzer:
                 SystemMessage(content="You are an expert recruiter writing clear, actionable candidate assessments."),
                 HumanMessage(content=prompt)
             ]
-            
+
             response = self.llm.invoke(messages)
             return response.content.strip()
-            
+
         except Exception as e:
             print(f"    ⚠️  LLM comprehensive analysis failed: {e}")
             # Fallback to basic analysis
@@ -314,17 +310,17 @@ class ExperienceAnalyzer:
                 relevance_analysis,
                 progression_analysis
             )
-    
-    def _format_work_history(self, work_experience: List[WorkExperience]) -> str:
+
+    def _format_work_history(self, work_experience: list[WorkExperience]) -> str:
         """Format work history for LLM prompt"""
         if not work_experience:
             return "No work experience listed."
-        
+
         summary = []
         for i, exp in enumerate(work_experience, 1):
             duration = f"{exp.duration_months} months" if exp.duration_months else "Unknown duration"
             current = " (Current)" if exp.is_current else ""
-            
+
             summary.append(f"{i}. {exp.position} at {exp.company}{current}")
             summary.append(f"   Duration: {duration}")
             if exp.technologies:
@@ -332,83 +328,83 @@ class ExperienceAnalyzer:
             if exp.responsibilities:
                 summary.append(f"   Key responsibilities: {'; '.join(exp.responsibilities[:3])}")
             summary.append("")
-        
+
         return "\n".join(summary)
-    
-    def _format_work_history_chronological(self, work_experience: List[WorkExperience]) -> str:
+
+    def _format_work_history_chronological(self, work_experience: list[WorkExperience]) -> str:
         """Format work history in chronological order (oldest to newest)"""
         if not work_experience:
             return "No work experience listed."
-        
+
         # Sort by start date (oldest first)
         sorted_exp = sorted(
-            work_experience, 
+            work_experience,
             key=lambda x: x.start_date if x.start_date else date(1900, 1, 1)
         )
-        
+
         summary = []
         for i, exp in enumerate(sorted_exp, 1):
             start = exp.start_date.strftime("%Y-%m") if exp.start_date else "Unknown"
             end = exp.end_date.strftime("%Y-%m") if exp.end_date else "Present"
-            
+
             summary.append(f"{i}. {exp.position} at {exp.company} ({start} to {end})")
             if exp.responsibilities:
                 summary.append(f"   Responsibilities: {'; '.join(exp.responsibilities[:2])}")
             summary.append("")
-        
+
         return "\n".join(summary)
-    
+
     def _generate_basic_analysis(
         self,
         name: str,
         total_years: float,
         required_years: int,
-        relevance_analysis: Dict,
-        progression_analysis: Dict
+        relevance_analysis: dict,
+        progression_analysis: dict
     ) -> str:
         """Fallback basic analysis"""
-        
+
         analysis = f"Experience Assessment for {name}:\n\n"
-        
+
         if total_years >= required_years:
             analysis += f"✅ Meets experience requirement with {total_years} years (required: {required_years}+).\n"
         else:
             analysis += f"⚠️ Below experience requirement: {total_years} years (required: {required_years}+).\n"
-        
+
         relevant_years = relevance_analysis.get("relevant_years", total_years)
         analysis += f"Relevant experience: ~{relevant_years} years.\n"
-        
+
         trajectory = progression_analysis.get("trajectory", "unknown")
         analysis += f"Career trajectory: {trajectory}.\n"
-        
+
         return analysis
 
 
-def experience_analyzer_node(state: Dict) -> Dict:
+def experience_analyzer_node(state: dict) -> dict:
     """
     LangGraph node: Analyze experience for all candidates
     """
     print("💼 Analyzing work experience...")
-    
+
     analyzer = ExperienceAnalyzer()
-    
+
     # Convert job_requirements dict back to model
     job_req = JobRequirements(**state["job_requirements"])
-    
+
     experience_scores = []
-    
+
     for candidate_data in state["candidates"]:
         candidate = Candidate(**candidate_data)
-        
+
         experience_score = analyzer.analyze_experience(candidate, job_req)
         experience_scores.append(experience_score.model_dump())
-        
+
         print(f"  ✅ {candidate.name}: {experience_score.experience_match_score:.1f}% "
               f"({experience_score.relevant_years}/{experience_score.required_years} years, "
               f"{experience_score.career_trajectory} trajectory)")
-    
+
     print(f"✅ Experience analysis complete for {len(experience_scores)} candidates\n")
-    
+
     return {
         "experience_scores": experience_scores,
         "current_step": "experience_analysis_complete"
@@ -417,9 +413,10 @@ def experience_analyzer_node(state: Dict) -> Dict:
 
 # Test independently
 if __name__ == "__main__":
-    from src.models import ExperienceRequirement, EducationRequirement, WorkExperience
     from datetime import date
-    
+
+    from src.models import EducationRequirement, ExperienceRequirement, WorkExperience
+
     # Mock job requirements
     job = JobRequirements(
         job_title="Senior AI Engineer",
@@ -437,7 +434,7 @@ if __name__ == "__main__":
         ),
         education=EducationRequirement(minimum_degree="Bachelor")
     )
-    
+
     # Mock candidate
     candidate = Candidate(
         name="Jane Smith",
@@ -472,10 +469,10 @@ if __name__ == "__main__":
         ],
         education=[]
     )
-    
+
     analyzer = ExperienceAnalyzer()
     score = analyzer.analyze_experience(candidate, job)
-    
+
     print("\n" + "="*80)
     print("✅ EXPERIENCE ANALYSIS RESULT")
     print("="*80)

@@ -1,6 +1,6 @@
-from pydantic import BaseModel, Field
-from typing import List, Optional
 from enum import Enum
+
+from pydantic import BaseModel, Field
 
 
 class SkillLevel(str, Enum):
@@ -19,11 +19,11 @@ class SkillPriority(str, Enum):
 class Skill(BaseModel):
     """Required skill with metadata"""
     name: str
-    level: Optional[SkillLevel] = None
+    level: SkillLevel | None = None
     priority: SkillPriority = SkillPriority.MUST_HAVE
-    years_required: Optional[int] = None
+    years_required: int | None = None
     # Similar/acceptable skills
-    alternatives: List[str] = Field(default_factory=list)
+    alternatives: list[str] = Field(default_factory=list)
 
     def matches(self, candidate_skill: str) -> bool:
         """Check if candidate skill matches this requirement"""
@@ -42,19 +42,19 @@ class Skill(BaseModel):
 
 class ExperienceRequirement(BaseModel):
     """Experience requirements"""
-    minimum_years: Optional[int] = None
-    maximum_years: Optional[int] = None
-    preferred_years: Optional[int] = None
-    specific_domains: List[str] = Field(default_factory=list)
+    minimum_years: int | None = None
+    maximum_years: int | None = None
+    preferred_years: int | None = None
+    specific_domains: list[str] = Field(default_factory=list)
     # e.g., "Software Engineer", "Data Scientist"
-    role_types: List[str] = Field(default_factory=list)
+    role_types: list[str] = Field(default_factory=list)
 
 
 class EducationRequirement(BaseModel):
     """Education requirements"""
     minimum_degree: str  # e.g., "Bachelor", "Master"
-    preferred_degree: Optional[str] = None
-    fields_of_study: List[str] = Field(default_factory=list)
+    preferred_degree: str | None = None
+    fields_of_study: list[str] = Field(default_factory=list)
     required: bool = True
 
 
@@ -63,36 +63,36 @@ class JobRequirements(BaseModel):
 
     # Basic Info
     job_title: str
-    department: Optional[str] = None
-    location: Optional[str] = None
-    job_type: Optional[str] = None  # Full-time, Contract, etc.
+    department: str | None = None
+    location: str | None = None
+    job_type: str | None = None  # Full-time, Contract, etc.
 
     # Description
     job_description: str
-    responsibilities: List[str] = Field(default_factory=list)
+    responsibilities: list[str] = Field(default_factory=list)
 
     # Requirements
-    technical_skills: List[Skill] = Field(default_factory=list)
-    soft_skills: List[str] = Field(default_factory=list)
-    tools_and_technologies: List[str] = Field(default_factory=list)
+    technical_skills: list[Skill] = Field(default_factory=list)
+    soft_skills: list[str] = Field(default_factory=list)
+    tools_and_technologies: list[str] = Field(default_factory=list)
 
     experience: ExperienceRequirement
     education: EducationRequirement
 
-    certifications: List[str] = Field(default_factory=list)
+    certifications: list[str] = Field(default_factory=list)
 
     # Nice to have
-    preferred_qualifications: List[str] = Field(default_factory=list)
+    preferred_qualifications: list[str] = Field(default_factory=list)
 
     # Company info
-    company_name: Optional[str] = None
-    company_description: Optional[str] = None
+    company_name: str | None = None
+    company_description: str | None = None
 
     # Metadata
-    source_file: Optional[str] = None
+    source_file: str | None = None
 
     @property
-    def must_have_skills(self) -> List[Skill]:
+    def must_have_skills(self) -> list[Skill]:
         """Get only must-have skills"""
         return [
             s for s in self.technical_skills
@@ -100,7 +100,7 @@ class JobRequirements(BaseModel):
         ]
 
     @property
-    def nice_to_have_skills(self) -> List[Skill]:
+    def nice_to_have_skills(self) -> list[Skill]:
         """Get nice-to-have skills"""
         return [
             s for s in self.technical_skills
@@ -108,6 +108,6 @@ class JobRequirements(BaseModel):
         ]
 
     @property
-    def all_required_skill_names(self) -> List[str]:
+    def all_required_skill_names(self) -> list[str]:
         """Get list of all skill names"""
         return [skill.name for skill in self.technical_skills]
