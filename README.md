@@ -100,6 +100,8 @@ The system is built on a modular and scalable architecture that leverages a vari
 ## UI
 <img width="2848" height="1606" alt="image" src="https://github.com/user-attachments/assets/c414a556-cf33-473c-9a3d-1edf580bb7c9" />
 
+<img width="2848" height="1612" alt="image" src="https://github.com/user-attachments/assets/0a9be068-79d3-4679-b03c-79141a6f918f" />
+
   
 ## **Author**
 
