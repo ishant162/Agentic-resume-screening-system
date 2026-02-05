@@ -96,6 +96,10 @@ The system is built on a modular and scalable architecture that leverages a vari
     ```bash
     streamlit run app/main.py
     ```
+
+## UI
+<img width="2848" height="1606" alt="image" src="https://github.com/user-attachments/assets/c414a556-cf33-473c-9a3d-1edf580bb7c9" />
+
   
 ## **Author**
 
