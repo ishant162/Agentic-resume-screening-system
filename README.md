@@ -48,49 +48,12 @@ This project demonstrates a **production-grade agentic AI system** that goes bey
 ## **Architecture**
 
 ### **High-Level Workflow**
-```
-START
-  ↓
-1. Job Analyzer (extracts requirements)
-  ↓
-2. Resume Parser (parses PDFs)
-  ↓
-3. Tool Coordinator (LLM decides tools) ← AGENTIC
-  ↓
-4. Candidate Enricher (runs tools)
-  ├─→ Web Search
-  ├─→ GitHub Analysis
-  └─→ Skill Taxonomy
-  ↓
-5. Enhanced Skill Matcher
-  ↓
-6. Enhanced Experience Analyzer
-  ↓
-7. Education Verifier
-  ↓
-8. Scorer & Ranker
-  ↓
-9. Quality Checker (self-reflection) ← AGENTIC
-  ↓
-  [Conditional: Re-analyze OR Continue]
-  ↓
-10. Bias Detector
-  ↓
-11. Salary Estimator
-  ↓
-12. ATS Scorer
-  ↓
-13. Report Generator
-  ↓
-14. Question Generator
-  ↓
-END
-```
+
 
 ### **Tech Stack**
 
 - **Framework**: LangGraph (for agentic workflows)
-- **LLM**: OpenAI GPT-4 Turbo (configurable)
+- **LLM**: Agnostic (configurable)
 - **PDF Processing**: PyPDF2, pdfplumber
 - **NLP**: spaCy
 - **Web Search**: DuckDuckGo Search
@@ -105,7 +68,7 @@ END
 ### **Prerequisites**
 
 - Python 3.9+
-- OpenAI API key
+- Any LLM api key
 - (Optional) GitHub Personal Access Token for higher rate limits
 
 ### **Installation**
@@ -125,7 +88,6 @@ END
 3. **Install dependencies**
 ```bash
    pip install -r requirements.txt
-   python -m spacy download en_core_web_sm
 ```
 
 4. **Set up environment variables**
@@ -135,10 +97,10 @@ END
    
    Edit `.env` and add your API keys:
 ```env
-   OPENAI_API_KEY=your_openai_api_key_here
+   GROQ_API=your_openai_api_key_here
    GITHUB_TOKEN=your_github_token_here  # Optional
    
-   MODEL_NAME=gpt-4-turbo-preview
+   MODEL_NAME=llama-3.3-70b-versatile
    TEMPERATURE=0.3
    
    SKILL_WEIGHT=0.5
@@ -234,7 +196,7 @@ EDUCATION_WEIGHT=0.2    # 20% weight
 
 ### **LLM Settings**
 ```python
-MODEL_NAME=gpt-4-turbo-preview  # or gpt-4, claude-sonnet-4, etc.
+MODEL_NAME=llama-3.3-70b-versatile  # or gpt-4, claude-sonnet-4, etc.
 TEMPERATURE=0.3                  # Lower = more deterministic
 ```
 
